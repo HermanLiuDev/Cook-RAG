@@ -1,13 +1,29 @@
+#导入配置文件
+from config import DEFAULT_CONFIG, RAGconfig
+#添加必要的模块导入
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent))
+
+#导入环境变量
+from dotenv import load_dotenv
+load_dotenv()
+
+
+
+
+#配置日志记录
 import logging
 
-
+logging.basicConfig(level=logging.INFO,
+                    format ='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 class ReceiptRAGSystem:
     '''
     食谱检索系统
     '''
 
-    def __init__(self, config：dict = None):
+    def __init__(self, config: RAGconfig = None):
         '''
         系统变量初始化
         
@@ -16,7 +32,7 @@ class ReceiptRAGSystem:
 
         '''
         #加载配置文件
-        self.config = config
+        self.config = config or DEFAULT_CONFIG
         
         #初始化数据处理、检索构建、检索优化和答案生成模块
         self.data_model = None
@@ -80,8 +96,28 @@ class ReceiptRAGSystem:
     def run_interactive(self):
         '''
         运行交互式问答系统
-        
         '''
+        print("😊欢迎使用食谱检索系统！")
+        print("该系统致力于解决今天吃什么的难题🥗")
+
+        while True:
+            try:
+                user_input = input("请输入您的问题（输入 '退出' 结束）： ").strip()
+                
+                if user_input.lower() in ['退出', 'exit', 'quit']:
+                    print("感谢使用，再见！👋")
+                    break
+
+                answer = self.answer_question(user_input)
+                print(f"系统回答：{answer}")
+
+            except KeyboardInterrupt:
+                print("\n感谢使用，再见！👋")
+                break
+            except Exception as e:
+                logging.error(f"交互式问答系统出错: {e}")
+                print(f"系统错误： {e}")
+
 
 
 def main():
@@ -96,9 +132,6 @@ def main():
         logging.error(f"系统运行出错: {e}")
         print(f"系统错误： {e}")
     
-    
-    
-
 
 if __name__ == "__main__":
     main()
