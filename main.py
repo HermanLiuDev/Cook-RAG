@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent))
 
+from rag_modules import DataPreparationModule
+
 #导入环境变量
 from dotenv import load_dotenv
 load_dotenv()
@@ -17,6 +19,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO,
                     format ='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.getLogger(__name__)
 
 class ReceiptRAGSystem:
     '''
@@ -46,6 +49,7 @@ class ReceiptRAGSystem:
         
         '''
         #加载数据处理模块
+        self.data_model = DataPreparationModule(self.config.data_path)
 
         #加载索引模块
 
