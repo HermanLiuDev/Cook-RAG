@@ -6,8 +6,8 @@ from typing import Dict,Any
 @dataclass
 class RAGconfig:
     # 配置文件类
-    data_path: str = "../data"
-    index_path: str = "../vectordatabase"
+    data_path: str = "./data"
+    index_path: str = "./index_vectorstore"
 
     embedding_model: str = "BAAI/bge-small-zh-v1.5"
     llm_model: str = "kimi-k2-0711-preview"

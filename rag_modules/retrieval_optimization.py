@@ -1,6 +1,6 @@
-
+import sys
 from langchain.retrievers import BM25Retriever
-from lanchain.core.documents import Document
+from langchain_core.documents import Document
 from langchain.vectorstores import FAISS
 from typing import List
 import logging
@@ -99,8 +99,12 @@ class RetrievalOptimizationModule:
         return reranked_docs
     
 if __name__ == "__main__":
+    from pathlib import Path
+    import sys
     logging.basicConfig(level=logging.INFO,
                     format ='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    #通过相对路径加载rag模块
+    sys.path.append(str(Path(__file__).parent.parent))
     from rag_modules.index_construction import IndexConstructionModule
     # 构造模拟的文档块
     mock_chunks = [
@@ -118,7 +122,7 @@ if __name__ == "__main__":
         chunks=mock_chunks
     )
     # 执行混合检索
-    hybrid_results = retrieval_module.hybrid_search("西红柿", top_k=2)
+    hybrid_results = retrieval_module.hybrid_search("第三段", top_k=2)
     
     print("混合检索结果:")
     for doc in hybrid_results:

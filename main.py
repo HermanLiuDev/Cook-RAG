@@ -66,8 +66,8 @@ class ReceiptRAGSystem:
         #初始化索引模块
         logging.info("正在初始化索引构建模块")
         self.index_model = IndexConstructionModule(
-            model_name=self.config.embedding_model_name,
-            index_save_path=self.config.index_path
+            model_name=self.config.embedding_model,
+            index_path=self.config.index_path
             )
 
         #初始化生成模块
@@ -85,7 +85,7 @@ class ReceiptRAGSystem:
 
         '''
         logging.info("📚正在构建知识库")
-        vectorstore = self.index_model.load_index(self.config.index_path)
+        vectorstore = self.index_model.load_index()
         if vectorstore is not None:
             logging.info("📚使用本地索引，跳过索引构建")
             #可以优化
@@ -93,26 +93,28 @@ class ReceiptRAGSystem:
             self.data_model.load_documents()
 
             #处理文档和切块
-            self.data_model.chunk_documents()
+            chunks = self.data_model.chunk_documents()
         else:
             #获取文档
             self.data_model.load_documents()
 
             #处理文档和切块
-            self.data_model.chunk_documents()
+            chunks = self.data_model.chunk_documents()
 
             #构建索引
-            self.index_model.build_index(self.data_model.chunks)
-            self.index_model.save_index(self.config.index_save_path)
+            self.index_model.build_index(chunks)
+
+            #保存索引
+            self.index_model.save_index()
         
         #初始化检索模块
         self.retrieval_model = RetrievalOptimizationModule(
-            index_vectorstore=self.index_model.index_vectorstore,
-            chunks=self.data_model.chunks
+            index_vectorstore=vectorstore,
+            chunks=chunks
         )
 
         #数据库统计信息
-        stats = self.data_model.get_stats()
+        stats = self.data_model.get_statistics()
         print(f'📊数据库统计信息:\n {stats}')
 
         logging.info("✅知识库构建完成")
@@ -139,7 +141,23 @@ class ReceiptRAGSystem:
         relevant_chunks = self.retrieval_model.hybrid_search(question, top_k=self.config.top_k)
 
         #显示检索到的子块信息
-        print(f"🔍检索到 {len(relevant_chunks)} 个相关信息块:")
+        if relevant_chunks:
+            chunk_info = []
+        for chunk in relevant_chunks:
+            dish_name = chunk.metadata.get('dish_name', '未知菜品')
+            # 尝试从内容中提取章节标题
+            content_preview = chunk.page_content[:100].strip()
+            if content_preview.startswith('#'):
+                # 如果是标题开头，提取标题（仅取第一行）
+                title_end = content_preview.find('\n') if '\n' in content_preview else len(content_preview)
+                section_title = content_preview[:title_end].replace('#', '').strip()
+                chunk_info.append(f"{dish_name}({section_title})")
+            else:
+                chunk_info.append(f"{dish_name}(内容片段)")
+
+            print(f"找到 {len(relevant_chunks)} 个相关文档块: {', '.join(chunk_info)}")
+        else:
+            print(f"找到 {len(relevant_chunks)} 个相关文档块")
 
         #生成回答
         answer = self.generation_model.generate_basic_answer(question, relevant_chunks)
@@ -152,6 +170,11 @@ class ReceiptRAGSystem:
         '''
         print("😊欢迎使用食谱检索系统！")
         print("该系统致力于解决今天吃什么的难题🥗")
+
+        #初始化系统
+        self.init_system()
+        #构建知识库
+        self.bulid_knowledge_database()
 
         while True:
             try:

@@ -1,8 +1,7 @@
-
-
 import logging 
+import os
 from pathlib import Path
-from langchain.core.documents import Document
+from langchain_core.documents import Document
 from langchain.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from typing import List
@@ -11,10 +10,10 @@ logger = logging.getLogger(__name__)
 
 class IndexConstructionModule:
     
-    def __init__(self, model_name='BAAI/bge-small-zh-v1.5', index_save_path='./index_vectorstore'):
+    def __init__(self, model_name='BAAI/bge-small-zh-v1.5', index_path='./index_vectorstore'):
         #初始化索引构建模块
         self.model_name = model_name
-        self.index_path = index_save_path
+        self.index_path = index_path
         self.embedding_model = None
         self.index_vectorstore = None
         self.setup_embedding_model()
@@ -59,7 +58,7 @@ class IndexConstructionModule:
         self.index_vectorstore.add_documents(new_chunks)
         logger.info("新文档块添加完成")
 
-    def save_index(self, index_save_path: str):
+    def save_index(self):
         '''
         保存索引到指定路径
         Args:
@@ -68,11 +67,11 @@ class IndexConstructionModule:
         if self.index_vectorstore is None:
             logger.warning("索引尚未构建，无法保存")
         
-        self.index_vectorstore.save_local(index_save_path)
-        logger.info(f"索引已保存到 {index_save_path}")
+        self.index_vectorstore.save_local(self.index_path)
+        logger.info(f"索引已保存到 {self.index_path}")
         
 
-    def load_index(self, index_save_path: str):
+    def load_index(self):
         '''
         从指定路径加载索引
         Args:
@@ -82,21 +81,23 @@ class IndexConstructionModule:
         if not self.embedding_model:
             self.setup_embedding_model()
         #确定索引路径存在
-        if not Path(index_save_path).exists():
-            logger.error(f"索引路径 {index_save_path} 不存在，请检查路径是否正确")
-            return
+        if not Path(self.index_path).exists():
+            logger.error(f"索引路径 {self.index_path} 不存在，请检查路径是否正确")
+            return None
 
-        logger.info(f"正在从 {index_save_path} 加载索引")
+        logger.info(f"正在从 {self.index_path} 加载索引")
         try:
             self.index_vectorstore = FAISS.load_local(
-                index_save_path, 
+                self.index_path, 
                 self.embedding_model,
-                allow_dangerous_code_execution=True
+                allow_dangerous_deserialization=True
                 )
             logger.info("索引加载完成")
         except Exception as e:
             logger.error(f"加载索引失败: {e},请重新构建新索引")
-            return
+            return None
+
+        return self.index_vectorstore
    
 
     def similarity_search(self, query: str, top_k: int = 5) -> List[Document]:
@@ -112,6 +113,7 @@ class IndexConstructionModule:
         return self.index_vectorstore.similarity_search(query, k=top_k)
 
 if __name__ == "__main__":
+    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"  
     logging.basicConfig(level=logging.INFO,
                     format ='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     # 构造模拟的文档块
@@ -125,7 +127,7 @@ if __name__ == "__main__":
     # 构建索引
     index_module.build_index(mock_chunks)
     # 执行相似度搜索    
-    search_results = index_module.similarity_search("西红柿", top_k=2)
+    search_results = index_module.similarity_search("龙虾", top_k=2)
 
     print("相似度搜索结果:")
     for doc in search_results:

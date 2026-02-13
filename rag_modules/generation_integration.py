@@ -2,9 +2,9 @@ import os
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.chat_models.moonshot import MoonshotChat
 from langchain_core.runnables import RunnablePassthrough
-from langchain_core.output_parsers import strOutputParser
+from langchain_core.output_parsers import StrOutputParser
 from typing import List
-from langchain.core.document import Document
+from langchain_core.documents import Document
 import logging
 logger = logging.getLogger(__name__)
 
@@ -60,17 +60,14 @@ class GenerationIntegrationModule:
 
         #构建链式组件
         chain = (
-            {"question": RunnablePassthrough(lambda: query), "context": lambda _: context}
+            {"question": RunnablePassthrough(), "context": lambda _: context}
             | prompt
             | self.llm
-            | strOutputParser()
+            | StrOutputParser()
         )
 
         #大模型生成答案
-        response = chain.invoke(
-            query=query,
-            context=context
-        )
+        response = chain.invoke(query)
 
         return response
 
