@@ -1,3 +1,4 @@
+import os
 #导入配置文件
 from config import DEFAULT_CONFIG, RAGconfig
 #添加必要的模块导入
@@ -5,14 +6,16 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent))
 
-from rag_modules import DataPreparationModule
+from rag_modules import (
+    DataPreparationModule,
+    IndexConstructionModule,
+    RetrievalOptimizationModule,
+    GenerationIntegrationModule
+)
 
 #导入环境变量
 from dotenv import load_dotenv
 load_dotenv()
-
-
-
 
 #配置日志记录
 import logging
@@ -43,36 +46,77 @@ class ReceiptRAGSystem:
         self.retrieval_model = None
         self.generation_model = None
 
+        #检查数据文件路径
+        if not Path(self.config.data_path).exists():
+            raise FileNotFoundError(f"数据文件路径 {self.config.data_path} 不存在，请检查路径是否正确")
+
+        #检查大模型api key设置
+        if not os.getenv("MOONSHOT_API_KEY"):
+            raise ValueError("环境变量 MOONSHOT_API_KEY 未设置，请设置后重试")
+        
     def init_system(self):
         '''
         初始化系统模块
         
         '''
-        #加载数据处理模块
+        logging.info("📚正在初始化系统核心模块，含：数据处理、索引构建、答案生成模块")
+        #初始化数据处理模块
         self.data_model = DataPreparationModule(self.config.data_path)
 
-        #加载索引模块
+        #初始化索引模块
+        logging.info("正在初始化索引构建模块")
+        self.index_model = IndexConstructionModule(
+            model_name=self.config.embedding_model_name,
+            index_save_path=self.config.index_path
+            )
 
-        #加载检索模块
-
-        #加载生成模块
-        pass
+        #初始化生成模块
+        logging.info("正在初始化生成模块")
+        self.generation_model = GenerationIntegrationModule(
+            model_name=self.config.llm_model,
+            temperature=self.config.temperature,
+            max_tokens=self.config.max_tokens
+        )
+        logging.info("✅系统核心模块初始化完成")
 
     def bulid_knowledge_database(self):
         '''
         构建知识库
 
         '''
-        #获取文档
+        logging.info("📚正在构建知识库")
+        vectorstore = self.index_model.load_index(self.config.index_path)
+        if vectorstore is not None:
+            logging.info("📚使用本地索引，跳过索引构建")
+            #可以优化
+            #获取文档
+            self.data_model.load_documents()
 
-        #处理文档和切块
+            #处理文档和切块
+            self.data_model.chunk_documents()
+        else:
+            #获取文档
+            self.data_model.load_documents()
 
-        #构建索引
+            #处理文档和切块
+            self.data_model.chunk_documents()
 
+            #构建索引
+            self.index_model.build_index(self.data_model.chunks)
+            self.index_model.save_index(self.config.index_save_path)
+        
         #初始化检索模块
+        self.retrieval_model = RetrievalOptimizationModule(
+            index_vectorstore=self.index_model.index_vectorstore,
+            chunks=self.data_model.chunks
+        )
 
         #数据库统计信息
-        pass
+        stats = self.data_model.get_stats()
+        print(f'📊数据库统计信息:\n {stats}')
+
+        logging.info("✅知识库构建完成")
+
 
     def answer_question(self, question: str):
         '''
@@ -84,18 +128,23 @@ class ReceiptRAGSystem:
         Returns:
         answer: 系统生成的回答
         '''
+        #判断相关模块是否加载
+        if self.retrieval_model is None or self.generation_model is None:
+            raise ValueError("系统模块未完全初始化，请先初始化系统模块")
 
         #用户问题与处理
-
+        print(f"🔍正在检索相关信息以回答问题: {question}")
 
         #实施检索
+        relevant_chunks = self.retrieval_model.hybrid_search(question, top_k=self.config.top_k)
 
+        #显示检索到的子块信息
+        print(f"🔍检索到 {len(relevant_chunks)} 个相关信息块:")
 
         #生成回答
-
-
+        answer = self.generation_model.generate_basic_answer(question, relevant_chunks)
         #返回结果
-        pass
+        return answer
 
     def run_interactive(self):
         '''
@@ -121,7 +170,6 @@ class ReceiptRAGSystem:
             except Exception as e:
                 logging.error(f"交互式问答系统出错: {e}")
                 print(f"系统错误： {e}")
-
 
 
 def main():
