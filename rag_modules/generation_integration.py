@@ -43,10 +43,10 @@ class GenerationIntegrationModule:
         '''
         logger.info(f"正在生成基本答案，查询: {query}")
         #构建提示词模板
-        prompt = ChatPromptTemplate.from_templates('''
-        你是一位专业的烹饪助手，拥有米其林三星主厨能力。应根据以下食谱信息回答用户的问题：
+        prompt = ChatPromptTemplate.from_template('''
+        你是一位专业的烹饪助手，请严格根据以下食谱信息回答用户的问题：
         
-        用户的问题：{query}
+        用户的问题：{question}
         
         相关食谱信息：
         {context}
@@ -58,6 +58,8 @@ class GenerationIntegrationModule:
         #构建上下文字符串
         context = self._build_context(context_docs)
 
+        #打印上下文，核对信息
+        logger.info(f"构建的上下文信息:\n{context}\n")
         #构建链式组件
         chain = (
             {"question": RunnablePassthrough(), "context": lambda _: context}

@@ -22,7 +22,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO,
                     format ='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 class ReceiptRAGSystem:
     '''
@@ -59,35 +59,35 @@ class ReceiptRAGSystem:
         初始化系统模块
         
         '''
-        logging.info("📚正在初始化系统核心模块，含：数据处理、索引构建、答案生成模块")
+        logger.info("📚正在初始化系统核心模块，含：数据处理、索引构建、答案生成模块")
         #初始化数据处理模块
         self.data_model = DataPreparationModule(self.config.data_path)
 
         #初始化索引模块
-        logging.info("正在初始化索引构建模块")
+        logger.info("正在初始化索引构建模块")
         self.index_model = IndexConstructionModule(
             model_name=self.config.embedding_model,
             index_path=self.config.index_path
             )
 
         #初始化生成模块
-        logging.info("正在初始化生成模块")
+        logger.info("正在初始化生成模块")
         self.generation_model = GenerationIntegrationModule(
             model_name=self.config.llm_model,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens
         )
-        logging.info("✅系统核心模块初始化完成")
+        logger.info("✅系统核心模块初始化完成")
 
     def bulid_knowledge_database(self):
         '''
         构建知识库
 
         '''
-        logging.info("📚正在构建知识库")
+        logger.info("📚正在构建知识库")
         vectorstore = self.index_model.load_index()
         if vectorstore is not None:
-            logging.info("📚使用本地索引，跳过索引构建")
+            logger.info("📚使用本地索引，跳过索引构建")
             #可以优化
             #获取文档
             self.data_model.load_documents()
@@ -102,7 +102,7 @@ class ReceiptRAGSystem:
             chunks = self.data_model.chunk_documents()
 
             #构建索引
-            self.index_model.build_index(chunks)
+            vectorstore = self.index_model.build_index(chunks)
 
             #保存索引
             self.index_model.save_index()
@@ -117,7 +117,7 @@ class ReceiptRAGSystem:
         stats = self.data_model.get_statistics()
         print(f'📊数据库统计信息:\n {stats}')
 
-        logging.info("✅知识库构建完成")
+        logger.info("✅知识库构建完成")
 
 
     def answer_question(self, question: str):
@@ -147,6 +147,9 @@ class ReceiptRAGSystem:
             dish_name = chunk.metadata.get('dish_name', '未知菜品')
             # 尝试从内容中提取章节标题
             content_preview = chunk.page_content[:100].strip()
+
+            logger.info(f"检索到的文档块预览: {content_preview}\n")
+            
             if content_preview.startswith('#'):
                 # 如果是标题开头，提取标题（仅取第一行）
                 title_end = content_preview.find('\n') if '\n' in content_preview else len(content_preview)

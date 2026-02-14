@@ -182,7 +182,11 @@ class DataPreparationModule:
                 #执行切分
                 md_chunks = markdown_spliter.split_text(doc.page_content)
                 logging.debug(f"文档 {doc.metadata.get('dish_name', '未知')} 切分成 {len(md_chunks)} 块")
-
+                
+                #分块继承文档元数据
+                for chunk in md_chunks:
+                    chunk.metadata.update(doc.metadata) 
+                    
                 #集成切分结果
                 all_chunks.extend(md_chunks)
             
