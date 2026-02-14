@@ -106,23 +106,35 @@ if __name__ == "__main__":
     #通过相对路径加载rag模块
     sys.path.append(str(Path(__file__).parent.parent))
     from rag_modules.index_construction import IndexConstructionModule
-    # 构造模拟的文档块
+    #数据准备(加载食谱数据集)
+    from rag_modules.data_preparation import DataPreparationModule
+    data_module = DataPreparationModule(data_path="./Cook-RAG/data")
+    data_module.load_documents()
+    mock_chunks = data_module.chunk_documents()
+
+    '''
     mock_chunks = [
         Document(page_content="今天应该吃龙虾", metadata={"source": "文档1"}),
         Document(page_content="西红柿鸡蛋怎么做", metadata={"source": "文档2"}),
         Document(page_content="这是第三段文本内容", metadata={"source": "文档3"}),
-    ]
+    ]    
+    '''
+    # 构造模拟的文档块
+
     # 初始化索引构建模块
-    index_module = IndexConstructionModule()
-    # 构建索引
-    index_module.build_index(mock_chunks)
+    index_module = IndexConstructionModule(index_path="./Cook-RAG/index_vectorstore")
+    vectorstore = index_module.load_index()
+    if vectorstore is None:
+        logger.warning("索引加载失败，正在构建新索引")
+        # 构建索引
+        vectorstore = index_module.build_index(mock_chunks)
     # 初始化检索优化模块
     retrieval_module = RetrievalOptimizationModule(
-        index_vectorstore=index_module.index_vectorstore,
+        index_vectorstore=vectorstore,
         chunks=mock_chunks
     )
     # 执行混合检索
-    hybrid_results = retrieval_module.hybrid_search("第三段", top_k=2)
+    hybrid_results = retrieval_module.hybrid_search("有什么用西红柿做的菜品", top_k=5)
     
     print("混合检索结果:")
     for doc in hybrid_results:
